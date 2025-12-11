@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { translations } from '../i18n';
 import { Language, Opportunity, OpportunityType, Message } from '../types';
-import { storageService } from '../services/storage';
+import { opportunityService, messageService } from '../services/supabaseService';
 
 interface AppContextType {
   language: Language;
@@ -10,11 +10,11 @@ interface AppContextType {
   t: (key: keyof typeof translations['ar']) => string;
   getTypeLabel: (type: OpportunityType) => string;
   opportunities: Opportunity[];
-  addOpportunity: (opp: Opportunity) => Promise<void>;
+  addOpportunity: (opp: Omit<Opportunity, 'id' | 'postedAt'>) => Promise<{ error: any }>;
   messages: Message[];
-  sendMessage: (msg: Message) => Promise<void>;
-  replyToMessage: (id: string, content: string) => Promise<void>;
-  refreshData: () => void;
+  sendMessage: (msg: { opportunityId: string; senderName: string; senderEmail: string; content: string }) => Promise<{ error: any }>;
+  replyToMessage: (id: string, content: string) => Promise<{ error: any }>;
+  refreshData: () => Promise<void>;
   dir: 'rtl' | 'ltr';
 }
 
@@ -25,10 +25,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
 
-  // Load initial data
-  const refreshData = () => {
-    setOpportunities(storageService.getOpportunities());
-    setMessages(storageService.getMessages());
+  const refreshData = async () => {
+    const opps = await opportunityService.getAll();
+    setOpportunities(opps);
+
+    const msgs = await messageService.getMessagesForUser();
+    setMessages(msgs);
   };
 
   useEffect(() => {
@@ -47,19 +49,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return translations[language].types[type];
   };
 
-  const addOpportunity = async (opp: Opportunity) => {
-    await storageService.addOpportunity(opp);
-    refreshData();
+  const addOpportunity = async (opp: Omit<Opportunity, 'id' | 'postedAt'>) => {
+    const { error } = await opportunityService.create(opp);
+    if (!error) {
+      await refreshData();
+    }
+    return { error };
   };
 
-  const sendMessage = async (msg: Message) => {
-    await storageService.sendMessage(msg);
-    refreshData();
+  const sendMessage = async (msg: { opportunityId: string; senderName: string; senderEmail: string; content: string }) => {
+    const { error } = await messageService.sendMessage(msg);
+    return { error };
   };
 
   const replyToMessage = async (id: string, content: string) => {
-    await storageService.replyToMessage(id, content);
-    refreshData();
+    const { error } = await messageService.replyToMessage(id, content);
+    if (!error) {
+      await refreshData();
+    }
+    return { error };
   };
 
   const dir = language === 'ar' ? 'rtl' : 'ltr';

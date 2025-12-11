@@ -25,19 +25,20 @@ const PostOpportunity: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    const newOpportunity: Opportunity = {
-      id: Date.now().toString(),
-      ...formData,
-      tags: [formData.type, formData.location],
-      postedAt: new Date().toISOString().split('T')[0]
-    };
 
-    await addOpportunity(newOpportunity);
+    const { error } = await addOpportunity({
+      ...formData,
+      tags: [formData.type, formData.location]
+    });
+
     setIsSubmitting(false);
-    
-    alert(t('formSuccess'));
-    navigate('/explore');
+
+    if (error) {
+      alert(t('formError') || 'Error creating opportunity');
+    } else {
+      alert(t('formSuccess'));
+      navigate('/explore');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

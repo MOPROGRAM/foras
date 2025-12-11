@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Menu, X, Bell, User, Search, Home, Bookmark, PlusCircle, Globe, Mail } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Bell, User, Search, Home, Bookmark, PlusCircle, Globe, Mail, LogOut, LogIn } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,10 +11,19 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, language, toggleLanguage, messages } = useApp();
+  const { user, signOut } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    await signOut();
+    setShowUserMenu(false);
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -81,10 +91,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Bell size={20} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
-            
-            <div className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center border border-primary-200 cursor-pointer">
-              <User size={18} />
-            </div>
+
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="w-8 h-8 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center border border-primary-200 hover:bg-primary-200 transition-colors"
+                >
+                  <User size={18} />
+                </button>
+
+                {showUserMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowUserMenu(false)} />
+                    <div className="absolute top-12 right-0 rtl:right-auto rtl:left-0 z-40 bg-white rounded-xl shadow-lg border border-slate-200 py-2 w-48">
+                      <div className="px-4 py-2 border-b border-slate-100">
+                        <p className="text-xs text-slate-500">{language === 'ar' ? 'مسجل كـ' : 'Signed in as'}</p>
+                        <p className="text-sm font-medium text-slate-900 truncate">{user.email}</p>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={16} />
+                        {language === 'ar' ? 'تسجيل خروج' : 'Sign out'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-primary-600 hover:bg-primary-50 rounded-full transition-colors"
+              >
+                <LogIn size={16} />
+                {language === 'ar' ? 'دخول' : 'Login'}
+              </Link>
+            )}
           </div>
         </div>
       </header>
